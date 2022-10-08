@@ -38,6 +38,17 @@ fn label_propagation<G: EdgeMapper>(graph: &G, nodes: u32) {
     let mut old_sum: u64 = label.iter().fold(0, |t,x| t + *x as u64) + 1;
     let mut new_sum: u64 = label.iter().fold(0, |t,x| t + *x as u64);
 
+    let mut edges = std::collections::HashSet::new();
+    graph.map_edges(|src, dst| {
+        if src != dst {
+            let min = std::cmp::min(src, dst) as u64;
+            let max = std::cmp::max(src, dst) as u64;
+            edges.insert(min << 32 | max);
+        }
+    });
+    // Double to make all edges bidirectional
+    println!("{} edges", edges.len() * 2);
+
     while new_sum < old_sum {
         graph.map_edges(|src, dst| {
             match label[src as usize].cmp(&label[dst as usize]) {
