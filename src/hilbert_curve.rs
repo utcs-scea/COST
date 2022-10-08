@@ -209,7 +209,7 @@ impl BytewiseCached {
                 (0x00, 0x0F) => (true, false),  // swapped
                 (0xF0, 0xFF) => (false, true),  // flipped
                 (0xFF, 0xF0) => (true, true),   // flipped & swapped
-                val => panic!(format!("Found : ({:x}, {:x})", val.0, val.1)),
+                val => panic!("Found : ({:x}, {:x})", val.0, val.1),
             };
             self.prev_out = (x & 0xFFFFFF00, y & 0xFFFFFF00);
         }
