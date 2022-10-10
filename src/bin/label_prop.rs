@@ -31,9 +31,6 @@ fn main() {
 }
 
 fn label_propagation<G: EdgeMapper>(graph: &G, nodes: u32) {
-
-   let timer = std::time::Instant::now();
-
     let mut label: Vec<u32> = (0..nodes).collect();
     let mut old_sum: u64 = label.iter().fold(0, |t,x| t + *x as u64) + 1;
     let mut new_sum: u64 = label.iter().fold(0, |t,x| t + *x as u64);
@@ -48,6 +45,8 @@ fn label_propagation<G: EdgeMapper>(graph: &G, nodes: u32) {
     });
     // Double to make all edges bidirectional
     println!("{} edges", edges.len() * 2);
+
+   let timer = std::time::Instant::now();
 
     while new_sum < old_sum {
         graph.map_edges(|src, dst| {
