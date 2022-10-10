@@ -25,6 +25,8 @@ fn main() {
     let mut cnt = 0;
     let mut src = 0;
 
+    let mut vec : Vec<Vec<u32>> = Vec::new();
+
     reader_mapper.map_edges(|x, y| {
         if x != src {
             if cnt > 0 {
@@ -37,10 +39,36 @@ fn main() {
 
         edge_writer.write_u32::<LittleEndian>(y).ok().expect("write error");
         cnt += 1;
+
+        let max = std::cmp::max(x, y) as usize;
+        if max >= vec.len() {
+            vec.resize(max + 1, vec![]);
+        }
+        if !vec[x as usize].contains(&y) {
+            vec[x as usize].push(y);
+        }
+        if !vec[y as usize].contains(&x) {
+            vec[y as usize].push(x);
+        }
     });
 
     if cnt > 0 {
         node_writer.write_u32::<LittleEndian>(src).ok().expect("write error");
         node_writer.write_u32::<LittleEndian>(cnt).ok().expect("write error");
+    }
+
+    let mut edge_bi_writer = BufWriter::new(File::create(format!("{}.biedges", target)).unwrap());
+    let mut node_bi_writer = BufWriter::new(File::create(format!("{}.binodes", target)).unwrap());
+
+    for (i, edge_vec) in vec.iter().enumerate() {
+        if edge_vec.is_empty() {
+            continue;
+        }
+        node_bi_writer.write_u32::<LittleEndian>(i as u32).ok().expect("write error");
+        node_bi_writer.write_u32::<LittleEndian>(edge_vec.len() as u32).ok().expect("write error");
+
+        for edge in edge_vec {
+            edge_bi_writer.write_u32::<LittleEndian>(*edge).ok().expect("write error");
+        }
     }
 }
