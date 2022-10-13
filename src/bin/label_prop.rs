@@ -64,5 +64,5 @@ fn label_propagation<G: EdgeMapper>(graph: &G, nodes: u32) {
 
     let mut non_roots = 0u32;
     for i in 0..label.len() { if i as u32 != label[i] { non_roots += 1; }}
-    println!("{} non-roots found", non_roots);
+    println!("{} non-roots found in {:?}", non_roots, timer.elapsed());
 }
