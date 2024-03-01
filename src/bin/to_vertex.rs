@@ -17,6 +17,8 @@ fn main() {
     let source = std::env::args().nth(1).expect("source unavailable"); let source = &source;
     let target = std::env::args().nth(2).expect("prefix unavailable"); let target = &target;
 
+    let start = std::time::Instant::now();
+
     let reader_mapper = ReaderMapper { reader: || BufReader::new(File::open(source).unwrap()) };
 
     let mut edge_writer = BufWriter::new(File::create(format!("{}.edges", target)).unwrap());
@@ -71,4 +73,7 @@ fn main() {
             edge_bi_writer.write_u32::<LittleEndian>(*edge).ok().expect("write error");
         }
     }
+
+    let elapsed_time = start.elapsed();
+    println!("E2E Runtime: {} ns", elapsed_time.as_nanos());
 }

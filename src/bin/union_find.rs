@@ -2,7 +2,7 @@ extern crate COST;
 
 use std::fs::File;
 
-use COST::graph_iterator::{EdgeMapper, DeltaCompressedReaderMapper, NodesEdgesMemMapper, UpperLowerMemMapper };
+use COST::graph_iterator::{EdgeMapper, DeltaCompressedReaderMapper, NodesEdgesMemMapper, UpperLowerMemMapper, ReaderMapper, CachingReaderMapper};
 use std::io::BufReader;
 
 fn main() {
@@ -16,7 +16,19 @@ fn main() {
     let name = std::env::args().nth(2).expect("name unavailable");
     let nodes: u32 = std::env::args().nth(3).expect("nodes unavailable").parse().expect("nodes not parseable");
 
+    let start = std::time::Instant::now();
+
     match mode.as_str() {
+        "reader" => {
+            union_find(&ReaderMapper::new(|| BufReader::new(File::open(&name).unwrap())), nodes);
+        }
+        "hybrid" => {
+            let file = File::open(&name).unwrap();
+            let len = file.metadata().unwrap().len();
+            let ulen = (len >> 2) + 1;
+            let llen = (len >> 1) + 1;
+            union_find(&CachingReaderMapper::new(|| BufReader::new(File::open(&name).unwrap()), ulen as usize, llen as usize), nodes);
+        }
         "vertex" => {
             union_find(&NodesEdgesMemMapper::new(&name), nodes)
         },
@@ -28,6 +40,9 @@ fn main() {
         },
         _ => { println!("unrecognized mode: {:?}", mode); },
     }
+
+    let elapsed = start.elapsed();
+    println!("E2E runtime: {} ns", elapsed.as_nanos());
 }
 
 fn union_find<G: EdgeMapper>(graph: &G, nodes: u32) {

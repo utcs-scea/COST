@@ -42,7 +42,7 @@ fn main() {
     }
 
     let elapsed = start.elapsed();
-    println!("E2E stats: {} ns", elapsed.as_nanos());
+    println!("E2E runtime: {} ns", elapsed.as_nanos());
 }
 
 fn stats<G: EdgeMapper>(graph: &G) -> u32 {
