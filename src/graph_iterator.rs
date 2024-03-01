@@ -221,12 +221,8 @@ impl <B: ::std::io::BufRead, F: Fn() -> B> EdgeMapper for CachingReaderMapper<B,
                     lower.push((lx, ly));
                 }
             });
-            self.upper.set(upper);
-            self.lower.set(lower);
             self.is_cached.set(true);
         } else {
-            let upper = self.upper.take();
-            let lower = self.lower.take();
             let mut slice = &lower[..];
             for &((u16_x, u16_y), count) in upper.iter() {
                 let u16_x = (u16_x as u32) << 16;
@@ -236,8 +232,8 @@ impl <B: ::std::io::BufRead, F: Fn() -> B> EdgeMapper for CachingReaderMapper<B,
                 }
                 slice = &slice[count as usize ..];
             }
-            self.upper.set(upper);
-            self.lower.set(lower);
         }
+        self.upper.set(upper);
+        self.lower.set(lower);
     }
 }
