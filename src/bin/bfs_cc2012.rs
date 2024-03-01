@@ -2,7 +2,7 @@ extern crate COST;
 
 use std::fs::File;
 
-use COST::graph_iterator::{EdgeMapper, DeltaCompressedReaderMapper, NodesEdgesMemMapper, UpperLowerMemMapper };
+use COST::graph_iterator::{EdgeMapper, DeltaCompressedReaderMapper, NodesEdgesMemMapper, UpperLowerMemMapper, ReaderMapper };
 use std::io::BufReader;
 
 fn main() {
@@ -17,6 +17,9 @@ fn main() {
     let nodes: u32 = std::env::args().nth(3).expect("nodes unavailable").parse().expect("nodes not parseable");
 
     match mode.as_str() {
+        "reader" => {
+            bfs(&ReaderMapper::new(|| BufReader::new(File::open(&name).unwrap())), nodes)
+        }
         "vertex" => {
             bfs(&NodesEdgesMemMapper::new(&name), nodes)
         },
