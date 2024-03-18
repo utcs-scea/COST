@@ -89,9 +89,10 @@ where I : EdgeMapper,
     for &element in buffer.iter() { output(element); }
 }
 
-pub fn convert_to_hilbert<I, O>(graph: &I, make_dense: bool, mut output: O) -> ()
-where I : EdgeMapper,
-      O : FnMut(u16, u16, u32, &Vec<(u16, u16)>) -> (),
+pub fn convert_to_hilbert_and_execute<I, F, O>(graph: &I, make_dense: bool, mut action: F, mut output: O) -> ()
+  where I : EdgeMapper,
+        F : FnMut(u32, u32) -> (),
+        O : FnMut(u16, u16, u32, &Vec<(u16, u16)>) -> (),
 {
     let mut uppers: HashMap<u32,Vec<u32>> = HashMap::new();
     let mut names = Vec::new();
@@ -99,6 +100,7 @@ where I : EdgeMapper,
     let hilbert = BytewiseHilbert::new();
 
     graph.map_edges(|mut node, mut edge| {
+        action(node, edge);
         if make_dense {
             while names.len() as u32 <= node { names.push(-1i32); }
             while names.len() as u32 <= edge { names.push(-1i32); }
@@ -108,7 +110,6 @@ where I : EdgeMapper,
             node = names[node as usize] as u32;
             edge = names[edge as usize] as u32;
         }
-
         let entangled = hilbert.entangle((node as u32, edge as u32));
         let upper = (entangled >> 32) as u32;
         let lower = entangled as u32;
@@ -141,6 +142,14 @@ where I : EdgeMapper,
             output(upperx, uppery, length, &temp);
         }
     }
+}
+
+
+pub fn convert_to_hilbert<I, O>(graph: &I, make_dense: bool, output: O) -> ()
+where I : EdgeMapper,
+      O : FnMut(u16, u16, u32, &Vec<(u16, u16)>) -> (),
+{
+  convert_to_hilbert_and_execute(graph, make_dense, |_src, _dst|{}, output);
 }
 
 pub fn merge<I: Iterator<Item=u64>, O: FnMut(u64)->()>(mut iterators: Vec<I>, mut output: O) {

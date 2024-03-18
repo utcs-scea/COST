@@ -2,13 +2,13 @@ extern crate COST;
 
 use std::fs::File;
 
-use COST::graph_iterator::{EdgeMapper, DeltaCompressedReaderMapper, NodesEdgesMemMapper, UpperLowerMemMapper };
+use COST::graph_iterator::{EdgeMapper, DeltaCompressedReaderMapper, NodesEdgesMemMapper, UpperLowerMemMapper, ReaderMapper, CachingReaderMapper};
 use std::io::BufReader;
 
 fn main() {
 
     if std::env::args().len() != 4 {
-        println!("Usage: pagerank  (vertex | hilbert | compressed) <prefix> nodes");
+        println!("Usage: pagerank  (reader | vertex | hybrid | hilbert | compressed) <prefix> nodes");
         return;
     }
 
@@ -16,10 +16,21 @@ fn main() {
     let name = std::env::args().nth(2).expect("name unavailable");
     let nodes: u32 = std::env::args().nth(3).expect("nodes unavailable").parse().expect("nodes not parseable");
 
+    let start = std::time::Instant::now();
     match mode.as_str() {
+        "reader" => {
+            pagerank(&ReaderMapper::new(|| BufReader::new(File::open(&name).unwrap())), nodes, 0.85f32);
+        }
         "vertex" => {
             pagerank(&NodesEdgesMemMapper::new(&name), nodes, 0.85f32)
         },
+        "hybrid" => {
+            let file = File::open(&name).unwrap();
+            let len = file.metadata().unwrap().len();
+            let ulen = (len >> 2) + 1;
+            let llen = (len >> 1) + 1;
+            pagerank(&CachingReaderMapper::new(|| BufReader::new(File::open(&name).unwrap()), ulen as usize, llen as usize), nodes, 0.85f32);
+        }
         "hilbert" => {
             pagerank(&UpperLowerMemMapper::new(&name), nodes, 0.85f32)
         },
@@ -28,6 +39,8 @@ fn main() {
         },
         _ => { println!("unrecognized mode: {:?}", mode); },
     }
+    let elapsed = start.elapsed();
+    println!("E2E runtime: {} ns", elapsed.as_nanos());
 }
 
 fn pagerank<G: EdgeMapper>(graph: &G, nodes: u32, alpha: f32) {

@@ -1,6 +1,7 @@
 use std::io::Read;
-use hilbert_curve::BytewiseCached;
+use hilbert_curve::{BytewiseCached, convert_to_hilbert_and_execute};
 use typedrw::TypedMemoryMap;
+use std::cell::Cell;
 
 pub trait EdgeMapper {
     fn map_edges(&self, action: impl FnMut(u32, u32));
@@ -104,79 +105,6 @@ impl<'a> EdgeMapper for DeltaCompressedSliceMapper<'a> {
     }
 }
 
-// // naughty method using unsafe transmute to read a filled binary buffer as a typed buffer
-// fn read_as_typed<'a, R: Read, T: Copy>(reader: &mut R, buffer: &'a mut[u8]) -> Result<&'a[T]> {
-//     if mem::size_of::<T>() * (buffer.len() / mem::size_of::<T>()) < buffer.len() {
-//         panic!("buffer size must be a multiple of mem::size_of::<T>() = {:?}", mem::size_of::<T>());
-//     }
-//
-//     let mut read = try!(reader.read(buffer));
-//     while mem::size_of::<T>() * (read / mem::size_of::<T>()) < read {
-//         read += try!(reader.read(&mut buffer[read..]));
-//     }
-//
-//     Ok(unsafe { mem::transmute(RawSlice {
-//         data: buffer.as_mut_ptr() as *const T,
-//         len:  read / mem::size_of::<T>(),
-//     }) })
-// }
-
-// pub struct UpperLowerMapper<R1: Read, R2: Read, F1: Fn()->R1, F2: Fn()->R2> {
-//     pub upper: F1,
-//     pub lower: F2,
-// }
-//
-// impl<R1: Read, R2: Read, F1: Fn()->R1, F2: Fn()->R2> EdgeMapper for UpperLowerMapper<R1, R2, F1, F2> {
-//     fn map_edges<F: FnMut(u32, u32) -> ()>(&self, mut action: F) -> () {
-//         let mut upper_reader = (self.upper)();
-//         let mut lower_reader = (self.lower)();
-//         let mut upper_buffer = vec![0u8; 1 << 20];
-//         let mut lower_buffer = vec![0u8; 1 << 20];
-//         while let Ok(upper) = read_as_typed::<_,((u16,u16),u32)>(&mut upper_reader, &mut upper_buffer[..]) {
-//             for &((ux, uy), mut count) in upper {
-//                 let ux = (ux as u32) << 16;
-//                 let uy = (uy as u32) << 16;
-//                 while count > 0 {
-//                     let size = min(lower_buffer.len(), 4 * count as usize);
-//                     if let Ok(lower) = read_as_typed::<_,(u16,u16)>(&mut lower_reader, &mut lower_buffer[..size]) {
-//                         for &(lx, ly) in lower {
-//                             action(ux + lx as u32, uy + ly as u32);
-//                         }
-//                         count -= lower.len() as u32;
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
-
-// pub struct NodesEdgesMapper<R1: Read, R2: Read, F1: Fn()->R1, F2: Fn()->R2> {
-//     pub nodes: F1,
-//     pub edges: F2,
-// }
-//
-// impl<R1: Read, R2: Read, F1: Fn()->R1, F2: Fn()->R2> EdgeMapper for NodesEdgesMapper<R1, R2, F1, F2> {
-//     fn map_edges<F: FnMut(u32, u32) -> ()>(&self, mut action: F) -> () {
-//         let mut nodes_reader = (self.nodes)();
-//         let mut edges_reader = (self.edges)();
-//         let mut nodes_buffer = vec![0u8; 1 << 20];
-//         let mut edges_buffer = vec![0u8; 1 << 20];
-//         while let Ok(nodes) = read_as_typed::<_,(u32,u32)>(&mut nodes_reader, &mut nodes_buffer[..]) {
-//             for &(source, mut count) in nodes {
-//                 while count > 0 {
-//                     let size = min(edges_buffer.len(), 4 * count as usize);
-//                     if let Ok(edges) = read_as_typed::<_,u32>(&mut edges_reader, &mut edges_buffer[..size]) {
-//                         for &target in edges {
-//                             action(source, target);
-//                         }
-//                         count -= edges.len() as u32;
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
-
 pub struct UpperLowerMemMapper {
     upper:  TypedMemoryMap<((u16,u16), u32)>,
     lower:  TypedMemoryMap<(u16, u16)>,
@@ -237,6 +165,14 @@ pub struct ReaderMapper<B: ::std::io::BufRead, F: Fn() -> B> {
     pub reader: F,
 }
 
+impl<B: ::std::io::BufRead, F: Fn() -> B> ReaderMapper<B, F> {
+    pub fn new(reader: F) -> ReaderMapper<B, F> {
+        ReaderMapper {
+            reader: reader,
+        }
+    }
+}
+
 impl<R: ::std::io::BufRead, RF: Fn() -> R> EdgeMapper for ReaderMapper<R, RF> {
     fn map_edges(&self, mut action: impl FnMut(u32, u32)) {
         let reader = (self.reader)();
@@ -249,5 +185,55 @@ impl<R: ::std::io::BufRead, RF: Fn() -> R> EdgeMapper for ReaderMapper<R, RF> {
                 action(src, dst);
             }
         }
+    }
+}
+
+pub struct CachingReaderMapper<B: ::std::io::BufRead, F: Fn() -> B>  {
+    reader: ReaderMapper<B, F>,
+    upper:  Cell<Vec<((u16,u16), u32)>>,
+    lower:  Cell<Vec<(u16, u16)>>,
+    is_cached: Cell<bool>
+}
+
+impl <B: ::std::io::BufRead, F: Fn() -> B> CachingReaderMapper<B, F> {
+    pub fn new(reader: F, cap_upper: usize, cap_lower: usize) -> CachingReaderMapper<B, F> {
+        let mut upper = Vec::new();
+        upper.reserve(cap_upper);
+        let mut lower = Vec::new();
+        lower.reserve(cap_lower);
+        CachingReaderMapper::<B, F> {
+            reader: ReaderMapper::new(reader),
+            upper: Cell::new(upper),
+            lower: Cell::new(lower),
+            is_cached: Cell::new(false),
+        }
+    }
+}
+
+impl <B: ::std::io::BufRead, F: Fn() -> B> EdgeMapper for CachingReaderMapper<B, F> {
+    fn map_edges(&self, mut action: impl FnMut(u32, u32)) {
+        let mut upper = self.upper.take();
+        let mut lower = self.lower.take();
+        if !self.is_cached.get() {
+            convert_to_hilbert_and_execute(&self.reader, false, action, |ux, uy, c, ls|{
+                upper.push(((ux, uy), c));
+                for &(lx, ly) in ls.iter() {
+                    lower.push((lx, ly));
+                }
+            });
+            self.is_cached.set(true);
+        } else {
+            let mut slice = &lower[..];
+            for &((u16_x, u16_y), count) in upper.iter() {
+                let u16_x = (u16_x as u32) << 16;
+                let u16_y = (u16_y as u32) << 16;
+                for &(l16_x, l16_y) in &slice[0.. count as usize] {
+                    action(u16_x | l16_x as u32, u16_y | l16_y as u32);
+                }
+                slice = &slice[count as usize ..];
+            }
+        }
+        self.upper.set(upper);
+        self.lower.set(lower);
     }
 }

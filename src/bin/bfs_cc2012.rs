@@ -2,52 +2,77 @@ extern crate COST;
 
 use std::fs::File;
 
-use COST::graph_iterator::{EdgeMapper, DeltaCompressedReaderMapper, NodesEdgesMemMapper, UpperLowerMemMapper };
+use COST::graph_iterator::{EdgeMapper, DeltaCompressedReaderMapper, NodesEdgesMemMapper, UpperLowerMemMapper, ReaderMapper, CachingReaderMapper};
 use std::io::BufReader;
+
+pub fn print_output(labels: Vec<u32>) {
+  for (i, x) in labels.into_iter().enumerate() {
+    println!("{}\t{}", i, x);
+  }
+}
 
 fn main() {
 
-    if std::env::args().len() != 4 {
-        println!("Usage: bfs  (vertex | hilbert | compressed) <prefix> nodes");
+    if std::env::args().len() != 5 {
+        println!("Usage: bfs (reader | hybrid | vertex | hilbert | compressed) <prefix> nodes");
         return;
     }
 
     let mode = std::env::args().nth(1).expect("mode unavailable");
     let name = std::env::args().nth(2).expect("name unavailable");
     let nodes: u32 = std::env::args().nth(3).expect("nodes unavailable").parse().expect("nodes not parseable");
+    let start_vertex: u32 = std::env::args().nth(4).expect("start_vertex unavailable").parse().expect("start_vertex not parseable");
+
+    let start = std::time::Instant::now();
+
+    let mut label : Vec<u32> = Vec::new();
 
     match mode.as_str() {
+        "reader" => {
+            label = bfs::<false, _>(&ReaderMapper::new(|| BufReader::new(File::open(&name).unwrap())), nodes, start_vertex);
+        }
+        "hybrid" => {
+            let file = File::open(&name).unwrap();
+            let len = file.metadata().unwrap().len();
+            let ulen = (len >> 2) + 1;
+            let llen = (len >> 1) + 1;
+            label = bfs::<false, _>(&CachingReaderMapper::new(|| BufReader::new(File::open(&name).unwrap()), ulen as usize, llen as usize), nodes, start_vertex);
+        }
         "vertex" => {
-            bfs(&NodesEdgesMemMapper::new(&name), nodes)
+            label = bfs::<false, _>(&NodesEdgesMemMapper::new(&name), nodes, start_vertex);
         },
         "hilbert" => {
-            bfs(&UpperLowerMemMapper::new(&name), nodes)
+            label = bfs::<false, _>(&UpperLowerMemMapper::new(&name), nodes, start_vertex);
         },
         "compressed" => {
-            bfs(&DeltaCompressedReaderMapper::new(|| BufReader::new(File::open(&name).unwrap())), nodes)
+            label = bfs::<false, _>(&DeltaCompressedReaderMapper::new(|| BufReader::new(File::open(&name).unwrap())), nodes, start_vertex);
         },
         _ => { println!("unrecognized mode: {:?}", mode); },
     }
+
+    let elapsed = start.elapsed();
+    eprintln!("E2E runtime: {} ns", elapsed.as_nanos());
+    print_output(label);
 }
 
-// NOTE : The following code is specific to the common crawl 2012 dataset.
-// NOTE : It may behave very badly indeed with other datasets.
-
-fn bfs<G: EdgeMapper>(graph: &G, nodes: u32) {
+fn bfs<const OUT: bool, G: EdgeMapper>(graph: &G, nodes: u32, start_vertex: u32) -> Vec<u32> {
 
     let timer = std::time::Instant::now();
 
-    // let nodes = 3_563_602_788 + 1;
+    let svert : usize = start_vertex as usize;
 
     let mut roots: Vec<u32> = (0..nodes).collect();
 
-    let mut label = vec![65535u16; nodes as usize];
-    label[0] = 0;
+    let mut label : Vec<u32> = vec![std::u32::MAX; nodes as usize];
+
+    label[svert] = 0;
+
+    let mut num_edges: u64 = 0;
 
     graph.map_edges(|mut x, mut y| {
 
-        if x == 0 { label[y as usize] = 1; }
-        if y == 0 { label[x as usize] = 1; }
+        if x == start_vertex { label[y as usize] = 1; }
+        if y == start_vertex { label[x as usize] = 1; }
 
         x = unsafe { *roots.get_unchecked(x as usize) };
         y = unsafe { *roots.get_unchecked(y as usize) };
@@ -58,22 +83,24 @@ fn bfs<G: EdgeMapper>(graph: &G, nodes: u32) {
         // works for Hilbert curve order
         roots[x as usize] = ::std::cmp::min(x, y);
         roots[y as usize] = ::std::cmp::min(x, y);
+        num_edges += 1;
     });
 
-    for i in 1..nodes {
+    for i in 0..nodes {
         let mut node = i;
         while node != roots[node as usize] { node = roots[node as usize]; }
-        if node != 0 { label[i as usize] = 0; }
+        //if node != start_vertex { label[i as usize] = 0; }
     }
 
-    let mut roots = Vec::with_capacity(nodes as usize);
+    let mut roots: Vec<(u32, u32)> = Vec::with_capacity(nodes as usize);
 
-    for i in 1..nodes {
-        if label[i as usize] == 1 { roots.push((i,0)); }
-        // else                      { roots[i as usize] = i; }
+    for i in 0..nodes {
+        if label[i as usize] == 1 { roots.push((i, start_vertex)); }
     }
 
-    println!("{:?}\titeration: {}", timer.elapsed(), 0);
+    if OUT {
+      eprintln!("{:?}\titeration: {}", timer.elapsed(), 0);
+    }
 
     // WTF is this? What are YOU PLANNNING?!??!
     let mut edges = Vec::new();
@@ -83,7 +110,7 @@ fn bfs<G: EdgeMapper>(graph: &G, nodes: u32) {
     while edges.len() == edges.capacity() {
 
         // allocate if the first iteration, clear otherwise
-        if edges.capacity() == 0 { edges = Vec::with_capacity(1 << 30); }
+        if edges.capacity() == 0 { edges = Vec::with_capacity(num_edges as usize); }
         else                     { edges.clear(); }
 
         graph.map_edges(|src, dst| {
@@ -111,7 +138,9 @@ fn bfs<G: EdgeMapper>(graph: &G, nodes: u32) {
         });
 
         iteration += 1;
-        println!("{:?}\titeration: {}", timer.elapsed(), iteration);
+        if OUT {
+            eprintln!("{:?}\titeration: {}", timer.elapsed(), iteration);
+        }
     }
 
     let mut done = false;
@@ -136,14 +165,9 @@ fn bfs<G: EdgeMapper>(graph: &G, nodes: u32) {
         });
 
         iteration += 1;
-        println!("{:?}\titeration: {}", timer.elapsed(), iteration);
-    }
-
-    let mut counts = vec![0u64; 1 << 16];
-    for &x in &label { counts[x as usize] += 1; }
-    for (dist, count) in counts.iter().enumerate() {
-        if *count > 0 {
-            println!("counts[{}]: {}", dist, count);
+        if OUT {
+            eprintln!("{:?}\titeration: {}", timer.elapsed(), iteration);
         }
     }
+    label
 }
