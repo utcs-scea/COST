@@ -1,20 +1,20 @@
 #![allow(non_snake_case)]
 
-extern crate lz4;
 extern crate byteorder;
+extern crate lz4;
 
 extern crate docopt;
 use docopt::Docopt;
 
 extern crate COST;
 
-use std::io::Write;
 use std::fs::File;
+use std::io::Write;
 
-use COST::hilbert_curve::{encode, Decoder, to_hilbert, merge};
+use byteorder::{LittleEndian, WriteBytesExt};
+use std::io::{stdin, stdout, BufReader, BufWriter};
 use COST::graph_iterator::ReaderMapper;
-use std::io::{BufReader, BufWriter, stdin, stdout};
-use byteorder::{WriteBytesExt, LittleEndian};
+use COST::hilbert_curve::{encode, merge, to_hilbert, Decoder};
 
 static USAGE: &'static str = "
 Usage: compressed parse_to_hilbert
@@ -23,10 +23,14 @@ Usage: compressed parse_to_hilbert
 ";
 
 fn main() {
-    let args = Docopt::new(USAGE).and_then(|dopt| dopt.parse()).unwrap_or_else(|e| e.exit());
+    let args = Docopt::new(USAGE)
+        .and_then(|dopt| dopt.parse())
+        .unwrap_or_else(|e| e.exit());
 
     if args.get_bool("parse_to_hilbert") {
-        let reader_mapper = ReaderMapper { reader: || BufReader::new(stdin())};
+        let reader_mapper = ReaderMapper {
+            reader: || BufReader::new(stdin()),
+        };
         let mut writer = BufWriter::new(stdout());
 
         let mut prev = 0u64;
@@ -41,7 +45,9 @@ fn main() {
         let mut writer = BufWriter::new(stdout());
         let mut vector = Vec::new();
         for &source in args.get_vec("<source>").iter() {
-            vector.push(Decoder::new(lz4::Decoder::new(BufReader::new(File::open(source).unwrap())).unwrap()));
+            vector.push(Decoder::new(
+                lz4::Decoder::new(BufReader::new(File::open(source).unwrap())).unwrap(),
+            ));
         }
 
         let mut prev = 0u64;
@@ -55,7 +61,6 @@ fn main() {
     }
 
     if args.get_bool("scan") {
-
         let mut bytes = 0u64;
         let mut writer = BufWriter::new(stdout());
         let mut offsets = BufWriter::new(File::create("offsets").unwrap());
@@ -65,7 +70,6 @@ fn main() {
         let mut prev_node = 0u64;
 
         for next in Decoder::new(BufReader::new(stdin())) {
-
             let node = next >> 32;
             let edge = next % (1 << 32);
 

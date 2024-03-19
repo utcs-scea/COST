@@ -1,11 +1,12 @@
 [package]
 
 name = "COST"
-version = "0.0.1"
-authors = ["Frank McSherry <fmcsherry@me.com>"]
+version = "0.0.2"
+authors = ["Frank McSherry <fmcsherry@me.com>", "AdityaAtulTewari <adityaatewari@gmail.com>"]
 
 [dependencies]
 docopt="*"
 byteorder="*"
-memmap="0.5"
+memmap="0.7"
 lz4="*"
+clap = { version = "4.5.3", features = ["derive"] }

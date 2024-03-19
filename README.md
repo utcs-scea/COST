@@ -4,6 +4,12 @@ COST is an acronym for the "Configuration that Outperforms a Single Thread", ind
 
 Specifically, this repository contains single-threaded implementations of three graph algorithms, [PageRank](http://en.wikipedia.org/wiki/PageRank), [label propagation](http://www.cs.cmu.edu/~ukang/papers/HalfpICDE2011.pdf), and [union-find](http://en.wikipedia.org/wiki/Disjoint-set_data_structure), supporting performance measurements taken on two graphs, [twitter_rv](http://an.kaist.ac.kr/traces/WWW2010.html) and [uk_2007_05](http://law.di.unimi.it/webdata/uk-2007-05/). The code is intended to be instructive, rather than a meaningful replacement for a graph-processing system.
 
+## Binary Layouts
+
+Binaries print the output of a particular run to `stdout`.
+They also print the E2E runtime of the algorithm itself to `stderr`.
+There is an optional flag to print intermediate timings in a prefixsum style addition.
+
 ## Instructions
 
 The project consists of several independent binaries and a supporting library. The `src/bin/` directory has one file for each binary, each of which can be executed by typing
