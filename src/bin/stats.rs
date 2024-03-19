@@ -2,12 +2,14 @@ extern crate COST;
 
 use std::fs::File;
 
-use COST::graph_iterator::{EdgeMapper, DeltaCompressedReaderMapper, NodesEdgesMemMapper, UpperLowerMemMapper, ReaderMapper, CachingReaderMapper};
 use std::io::BufReader;
 use std::time::Instant;
+use COST::graph_iterator::{
+    CachingReaderMapper, DeltaCompressedReaderMapper, EdgeMapper, NodesEdgesMemMapper,
+    ReaderMapper, UpperLowerMemMapper,
+};
 
 fn main() {
-
     if std::env::args().len() != 3 {
         println!("Usage: stats  (reader | vertex | hilbert | compressed) <prefix>");
         return;
@@ -20,25 +22,35 @@ fn main() {
 
     match mode.as_str() {
         "reader" => {
-            stats(&ReaderMapper::new(|| BufReader::new(File::open(&name).unwrap())));
+            stats(&ReaderMapper::new(|| {
+                BufReader::new(File::open(&name).unwrap())
+            }));
         }
         "hybrid" => {
             let file = File::open(&name).unwrap();
             let len = file.metadata().unwrap().len();
             let ulen = (len >> 2) + 1;
             let llen = (len >> 1) + 1;
-            stats(&CachingReaderMapper::new(|| BufReader::new(File::open(&name).unwrap()), ulen as usize, llen as usize));
+            stats(&CachingReaderMapper::new(
+                || BufReader::new(File::open(&name).unwrap()),
+                ulen as usize,
+                llen as usize,
+            ));
         }
         "vertex" => {
             stats(&NodesEdgesMemMapper::new(&name));
-        },
+        }
         "hilbert" => {
             stats(&UpperLowerMemMapper::new(&name));
-        },
+        }
         "compressed" => {
-            stats(&DeltaCompressedReaderMapper::new(|| BufReader::new(File::open(&name).unwrap())));
-        },
-        _ => { println!("unrecognized mode: {:?}", mode); },
+            stats(&DeltaCompressedReaderMapper::new(|| {
+                BufReader::new(File::open(&name).unwrap())
+            }));
+        }
+        _ => {
+            println!("unrecognized mode: {:?}", mode);
+        }
     }
 
     let elapsed = start.elapsed();
@@ -50,8 +62,12 @@ fn stats<G: EdgeMapper>(graph: &G) -> u32 {
     let mut max_y = 0;
     let mut edges = 0u64;
     graph.map_edges(|x, y| {
-        if max_x < x { max_x = x; }
-        if max_y < y { max_y = y; }
+        if max_x < x {
+            max_x = x;
+        }
+        if max_y < y {
+            max_y = y;
+        }
         edges += 1;
     });
 
