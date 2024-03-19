@@ -25,7 +25,7 @@ RUN apt update -y && apt install -y \
 USER ${UNAME}
 
 RUN . $HOME/.cargo/env \
-&&  cargo install cargo-make capnpc
+&&  cargo install cargo-make
 RUN echo ". ${HOME}/.cargo/env" >> ~/.bash_profile
 
 USER root
