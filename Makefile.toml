@@ -2,8 +2,8 @@
 UID = { script = ["id -u"] }
 GID = { script = ["id -g"] }
 UNAME = { script = ["id -un"] }
-INT = { script = ["echo ${INTERACTIVE:-i}"]}
-IS_CI = { script = ["echo ${CI:-false}"]}
+INT = { script = ["if [ ${INTERACTIVE} = no ]; then echo ; else echo i; fi"] }
+IS_CI = { script = ["echo ${CI:-false}"] }
 
 [tasks.format]
 install_crate = "rustfmt"
