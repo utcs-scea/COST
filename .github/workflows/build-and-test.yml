@@ -34,6 +34,15 @@ jobs:
         lfs: 'true'
         submodules: recursive
 
+    - name: Check/Install Cargo
+      timeout-minutes: 10
+      run: |
+        if [ -e `which cargo` ]; then
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          . $HOME/.cargo/env
+          cargo install cargo-make
+        fi
+
     - name: Format
       timeout-minutes: 2
       run: |
