@@ -1,5 +1,5 @@
-use byteorder::{ReadBytesExt, WriteBytesExt};
 use crate::graph_iterator::EdgeMapper;
+use byteorder::{ReadBytesExt, WriteBytesExt};
 use std::collections::HashMap;
 use std::io::{Read, Write};
 
@@ -398,7 +398,10 @@ fn bit_detangle(tangle: u64) -> (u32, u32) {
 fn bit_rotate(logn: usize, pair: (u32, u32), rx: u32, ry: u32) -> (u32, u32) {
     if ry == 0 {
         if rx != 0 {
-            ((1u32 << logn).wrapping_sub(pair.1).wrapping_sub(1), (1u32 << logn).wrapping_sub(pair.0).wrapping_sub(1))
+            (
+                (1u32 << logn).wrapping_sub(pair.1).wrapping_sub(1),
+                (1u32 << logn).wrapping_sub(pair.0).wrapping_sub(1),
+            )
         } else {
             (pair.1, pair.0)
         }
