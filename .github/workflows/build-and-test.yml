@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: BSD-2-Clause
+# Copyright (c) 2023. University of Texas at Austin. All rights reserved.
+
+name: Docker / Ubuntu 22.04 / Build and Test
+run-name: docker-ubuntu-2204 performed by @${{ github.triggering_actor }}
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ubuntu-2204-docker:
+    name: cargo
+    runs-on: self-hosted
+    permissions:
+      contents: read
+      packages: write
+    env:
+      INTERACTIVE: "no"
+      IS_CI: "true"
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        lfs: 'true'
+        submodules: recursive
+
+    - name: Check/Install Cargo
+      timeout-minutes: 10
+      run: |
+        if [ ! -e `which cargo` ]; then
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        fi
+        if [ ! -e `which makers` ]; then
+          cargo install -j cargo-make
+        fi
+
+    - name: Docker Build
+      timeout-minutes: 10
+      run: |
+        $HOME/.cargo/bin/cargo make dockerbuild
+
+    - name: Format
+      timeout-minutes: 2
+      run: |
+        $HOME/.cargo/bin/cargo make ci-fmt
+
+    - name: Debug Tests
+      timeout-minutes: 10
+      run: |
+        $HOME/.cargo/bin/cargo make ci-test
+
+    - name: Release Tests
+      timeout-minutes: 10
+      run: |
+        $HOME/.cargo/bin/cargo make ci-test-release

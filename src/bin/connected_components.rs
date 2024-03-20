@@ -14,13 +14,21 @@ use COST::graph_iterator::{
 fn print_output(connected_components: u32, labels: Vec<u32>) {
     println!("{} Connected Components", connected_components);
     for (i, label) in labels.into_iter().enumerate() {
-      println!("{}\t{}", i, label);
+        println!("{}\t{}", i, label);
     }
 }
 
-fn label_propagation<const OUT: bool, G: EdgeMapper>(graph: &G, nodes: u32, timer: std::time::Instant) -> (u32, Vec<u32>) {
+fn label_propagation<const OUT: bool, G: EdgeMapper>(
+    graph: &G,
+    nodes: u32,
+    timer: std::time::Instant,
+) -> (u32, Vec<u32>) {
     let mut label: Vec<u32> = (0..nodes).collect();
-    let mut new_sum: u64 = if nodes % 2 == 0 { (nodes as u64 >> 1) * (nodes as u64 - 1) } else { (nodes as u64) * ((nodes as u64 - 1) >> 1)};
+    let mut new_sum: u64 = if nodes % 2 == 0 {
+        (nodes as u64 >> 1) * (nodes as u64 - 1)
+    } else {
+        (nodes as u64) * ((nodes as u64 - 1) >> 1)
+    };
     let mut old_sum: u64 = new_sum + 1;
     let mut roots = nodes;
     if OUT {
@@ -32,13 +40,17 @@ fn label_propagation<const OUT: bool, G: EdgeMapper>(graph: &G, nodes: u32, time
         graph.map_edges(
             |src, dst| match label[src as usize].cmp(&label[dst as usize]) {
                 std::cmp::Ordering::Less => {
-                    if label[dst as usize] == dst {roots -= 1;}
+                    if label[dst as usize] == dst {
+                        roots -= 1;
+                    }
                     new_sum += label[src as usize] as u64;
                     new_sum -= label[dst as usize] as u64;
                     label[dst as usize] = label[src as usize];
                 }
                 std::cmp::Ordering::Greater => {
-                    if label[src as usize] == src {roots -= 1;}
+                    if label[src as usize] == src {
+                        roots -= 1;
+                    }
                     new_sum += label[dst as usize] as u64;
                     new_sum -= label[src as usize] as u64;
                     label[src as usize] = label[dst as usize];
@@ -83,7 +95,7 @@ fn main() {
 
     match mode {
         Mapper::Reader => {
-          (ccs, labels) = const_switch_bool!(args.print_rounds, |B| label_propagation::<B, _>(
+            (ccs, labels) = const_switch_bool!(args.print_rounds, |B| label_propagation::<B, _>(
                 &ReaderMapper::new(|| BufReader::new(File::open(&name).unwrap())),
                 nodes,
                 start,
@@ -105,21 +117,21 @@ fn main() {
             ));
         }
         Mapper::Vertex => {
-          (ccs, labels) = const_switch_bool!(args.print_rounds, |B| label_propagation::<B, _>(
+            (ccs, labels) = const_switch_bool!(args.print_rounds, |B| label_propagation::<B, _>(
                 &NodesEdgesMemMapper::new(&name),
                 nodes,
                 start,
             ));
         }
         Mapper::Hilbert => {
-          (ccs, labels) = const_switch_bool!(args.print_rounds, |B| label_propagation::<B, _>(
+            (ccs, labels) = const_switch_bool!(args.print_rounds, |B| label_propagation::<B, _>(
                 &UpperLowerMemMapper::new(&name),
                 nodes,
                 start,
             ));
         }
         Mapper::Compressed => {
-          (ccs, labels) = const_switch_bool!(args.print_rounds, |B| label_propagation::<B, _>(
+            (ccs, labels) = const_switch_bool!(args.print_rounds, |B| label_propagation::<B, _>(
                 &DeltaCompressedReaderMapper::new(|| BufReader::new(File::open(&name).unwrap())),
                 nodes,
                 start,

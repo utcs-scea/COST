@@ -2,6 +2,8 @@
 UID = { script = ["id -u"] }
 GID = { script = ["id -g"] }
 UNAME = { script = ["id -un"] }
+INT = { script = ["if [ ${INTERACTIVE} = no ]; then echo ; else echo i; fi"] }
+IS_CI = { script = ["echo ${CI:-false}"] }
 
 [tasks.format]
 install_crate = "rustfmt"
@@ -19,9 +21,21 @@ dependencies = ["clean"]
 
 [tasks.dockerbuild]
 command = "docker"
-args = ["build", "--build-arg=UNAME=${USER}", "--build-arg=UID=${UID}", "--build-arg=GID=${GID}", "-t", "cost:latest", "docker/"]
+args = ["build", "--build-arg=IS_CI=${IS_CI}", "--build-arg=UNAME=${UNAME}", "--build-arg=UID=${UID}", "--build-arg=GID=${GID}", "-t", "cost:${UNAME}", "docker/"]
 
 [tasks.docker]
 command = "docker"
-args = ["run", "-v", "/home/${UNAME}/.vim:/home/${UNAME}/.vim", "-v", "${CARGO_MAKE_WORKING_DIRECTORY}:/cost", "-ti", "cost:latest"]
+args = ["run", "-v", "/home/${UNAME}/.vim:/home/${UNAME}/.vim", "-v", "${CARGO_MAKE_WORKING_DIRECTORY}:/cost", "-t${INT}", "cost:${UNAME}", "${@}"]
 dependencies = ["dockerbuild"]
+
+[tasks.ci-fmt]
+command = "makers"
+args = ["docker", "/bin/bash", "-c", "/home/${UNAME}/.cargo/bin/cargo fmt -- --check"]
+
+[tasks.ci-test]
+command = "makers"
+args = ["docker", "/bin/bash", "-c", "/home/${UNAME}/.cargo/bin/cargo test"]
+
+[tasks.ci-test-release]
+command = "makers"
+args = ["docker", "/bin/bash", "-c", "/home/${UNAME}/.cargo/bin/cargo test --release"]
