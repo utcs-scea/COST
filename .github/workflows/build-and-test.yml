@@ -23,7 +23,7 @@ jobs:
     name: cargo
     runs-on: self-hosted
     permissions:
-      contests: read
+      contents: read
       packages: write
 
     steps:
