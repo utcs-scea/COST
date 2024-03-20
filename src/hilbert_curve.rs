@@ -1,5 +1,5 @@
 use byteorder::{ReadBytesExt, WriteBytesExt};
-use graph_iterator::EdgeMapper;
+use crate::graph_iterator::EdgeMapper;
 use std::collections::HashMap;
 use std::io::{Read, Write};
 

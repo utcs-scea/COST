@@ -1,7 +1,7 @@
-use hilbert_curve::{convert_to_hilbert_and_execute, BytewiseCached};
+use crate::hilbert_curve::{convert_to_hilbert_and_execute, BytewiseCached};
 use std::cell::Cell;
 use std::io::Read;
-use typedrw::TypedMemoryMap;
+use crate::typedrw::TypedMemoryMap;
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 pub enum Mapper {
