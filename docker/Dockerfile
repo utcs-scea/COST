@@ -43,7 +43,7 @@ USER root
 
 ARG IS_CI=false
 
-RUN if [ "${IS_CI}" = "true" ]; then \
+RUN if [ "${IS_CI}" = "false" ]; then \
     apt update -y && apt install -y \
     gdb \
     vim \

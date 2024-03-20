@@ -2,6 +2,8 @@
 UID = { script = ["id -u"] }
 GID = { script = ["id -g"] }
 UNAME = { script = ["id -un"] }
+INT = { script = ["test -z ${INTERACTIVE} && echo i || echo ${INTERACTIVE}"]}
+IS_CI = { script = ["test -z ${CI} && echo false || echo true"]}
 
 [tasks.format]
 install_crate = "rustfmt"
@@ -19,11 +21,11 @@ dependencies = ["clean"]
 
 [tasks.dockerbuild]
 command = "docker"
-args = ["build", "--build-arg=UNAME=${USER}", "--build-arg=UID=${UID}", "--build-arg=GID=${GID}", "-t", "cost:${UNAME}", "docker/"]
+args = ["build", "--build-arg=IS_CI=${IS_CI}", "--build-arg=UNAME=${UNAME}", "--build-arg=UID=${UID}", "--build-arg=GID=${GID}", "-t", "cost:${UNAME}", "docker/"]
 
 [tasks.docker]
 command = "docker"
-args = ["run", "-v", "/home/${UNAME}/.vim:/home/${UNAME}/.vim", "-v", "${CARGO_MAKE_WORKING_DIRECTORY}:/cost", "-ti", "cost:${UNAME}", "${@}"]
+args = ["run", "-v", "/home/${UNAME}/.vim:/home/${UNAME}/.vim", "-v", "${CARGO_MAKE_WORKING_DIRECTORY}:/cost", "-t${INT}", "cost:${UNAME}", "${@}"]
 dependencies = ["dockerbuild"]
 
 [tasks.ci-fmt]

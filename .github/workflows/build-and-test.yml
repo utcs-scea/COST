@@ -25,6 +25,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      INTERACTIVE: ""
+      IS_CI: "true"
 
     steps:
     - name: Checkout
