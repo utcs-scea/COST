@@ -19,11 +19,11 @@ dependencies = ["clean"]
 
 [tasks.dockerbuild]
 command = "docker"
-args = ["build", "--build-arg=UNAME=${USER}", "--build-arg=UID=${UID}", "--build-arg=GID=${GID}", "-t", "cost:latest", "docker/"]
+args = ["build", "--build-arg=UNAME=${USER}", "--build-arg=UID=${UID}", "--build-arg=GID=${GID}", "-t", "cost:${UNAME}", "docker/"]
 
 [tasks.docker]
 command = "docker"
-args = ["run", "-v", "/home/${UNAME}/.vim:/home/${UNAME}/.vim", "-v", "${CARGO_MAKE_WORKING_DIRECTORY}:/cost", "-ti", "cost:latest", "${@}"]
+args = ["run", "-v", "/home/${UNAME}/.vim:/home/${UNAME}/.vim", "-v", "${CARGO_MAKE_WORKING_DIRECTORY}:/cost", "-ti", "cost:${UNAME}", "${@}"]
 dependencies = ["dockerbuild"]
 
 [tasks.ci-fmt]
