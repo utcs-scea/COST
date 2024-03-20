@@ -44,10 +44,10 @@ jobs:
           cargo install -j cargo-make
         fi
 
-    - name: Docker
+    - name: Docker Build
       timeout-minutes: 10
       run: |
-        $HOME/.cargo/bin/cargo make docker
+        $HOME/.cargo/bin/cargo make dockerbuild
 
     - name: Format
       timeout-minutes: 2
