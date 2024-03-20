@@ -32,14 +32,17 @@ ubuntu-2204-docker:
       fetch-depth: 0
       lfs: 'true'
       submodules: recursive
+
   - name: Format
       timeout-minutes: 1
       run: |
         cargo ci-fmt
+
   - name: Debug Tests
       timeout-minutes: 10
       run: |
         cargo ci-test
+
   - name: Release Tests
       timeout-minutes: 10
       run: |
