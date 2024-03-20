@@ -34,16 +34,16 @@ ubuntu-2204-docker:
       submodules: recursive
 
   - name: Format
-      timeout-minutes: 2
-      run: |
-        cargo ci-fmt
+    timeout-minutes: 2
+    run: |
+      cargo ci-fmt
 
   - name: Debug Tests
-      timeout-minutes: 10
-      run: |
-        cargo ci-test
+    timeout-minutes: 10
+    run: |
+      cargo ci-test
 
   - name: Release Tests
-      timeout-minutes: 10
-      run: |
-        cargo ci-test-release
+    timeout-minutes: 10
+    run: |
+      cargo ci-test-release
